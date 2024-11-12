@@ -1,18 +1,10 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import AutoToc from '../main';
+import TemplatePlugin from '../main';
 
-interface AutoTocSettings {
-    mySetting: string;
-}
+export class SettingTab extends PluginSettingTab {
+    plugin: TemplatePlugin;
 
-const DEFAULT_SETTINGS: AutoTocSettings = {
-    mySetting: 'default'
-}
-
-class SettingTab extends PluginSettingTab {
-    plugin: AutoToc;
-
-    constructor(app: App, plugin: AutoToc) {
+    constructor(app: App, plugin: TemplatePlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
