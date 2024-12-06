@@ -8,8 +8,7 @@ import {
 	existsSync,
 	writeFileSync,
 	readFileSync,
-	symlinkSync,
-	unlinkSync
+	copyFileSync
 } from "fs";
 
 const banner =
@@ -37,11 +36,13 @@ const manifestJson = JSON.parse(readFileSync(manifestJsonPath, 'utf-8'));
 if (!existsSync(`${__dirname}/data.json`)) {
 	writeFileSync(`${__dirname}/data.json`, "{}", 'utf-8');
 }
+
 const dataJsonPath = path.join(__dirname, 'data.json');
 const dataJson = JSON.parse(readFileSync(dataJsonPath, 'utf-8'));
 
 // Retrieve the name of the package
 const packageName = packageJson.name;
+const packageVersion = packageJson.version;
 const packageMain = prod ? "dist/build/main.js" : "dist/dev/main.js";
 packageJson.main = packageMain;
 writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 4), 'utf-8');
@@ -100,6 +101,7 @@ if (envFilePath) {
 		parsedEnv["pluginManifest"] = manifestJson;
 		parsedEnv["pluginSettingsPath"] = dataJsonPath;
 		parsedEnv["pluginSettings"] = dataJson;
+		parsedEnv["pluginVersion"] = packageVersion;
 		parsedEnv["projectRoot"] = projectRoot;
 		parsedEnv["vaultRoot"] = vaultRoot;
 		parsedEnv["vaultName"] = vaultName;
@@ -110,8 +112,11 @@ if (envFilePath) {
 	}
 }
 
-const sourcePath = `${pluginRoot}/${packageMain}`;
-const targetPath = `${pluginRoot}/main.js`;
+const sourcePath = path.resolve(`${pluginRoot}/${packageMain}`);
+const targetPath = path.resolve(`${pluginRoot}/main.js`);
+
+logs.push(`Source Path: ${sourcePath}`);
+logs.push(`Target Path: ${targetPath}`);
 
 const context = await esbuild.context({
 	banner: {
@@ -133,7 +138,8 @@ const context = await esbuild.context({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
-		...builtins],
+		...builtins
+	],
 	define: {
 		"Process.env": JSON.stringify(parsedEnv),
 	},
@@ -150,23 +156,24 @@ const context = await esbuild.context({
 	process.exit(1);
 });
 
-try {
-	if (existsSync(targetPath)) {
-		unlinkSync(targetPath); // Remove existing symlink or file
-	}
-	symlinkSync(sourcePath, targetPath);
-	logs.push(`Symlink created: ${targetPath} -> ${sourcePath}`);
-} catch (error) {
-	console.error('Error creating symlink:', error);
-	process.exit(1);
-}
+function copyMainJs() {
+	try {
+		copyFileSync(sourcePath, targetPath);
+		logs.push(`Copied file: ${sourcePath} -> ${targetPath}`);
 
-logs = logs.join('\n');
-if (shouldLog) console.log(logs);
+		logs = logs.join('\n');
+		if (shouldLog) console.log(logs);
+	} catch (error) {
+		console.error(`Error creating symlink: ${error}\nLogs:\n${logs.join('\n')}`);
+		process.exit(1);
+	}
+}
 
 if (prod) {
 	await context.rebuild();
-	process.exit(0);
+	copyMainJs();
+	await context.dispose();
 } else {
+	copyMainJs();
 	await context.watch();
 }

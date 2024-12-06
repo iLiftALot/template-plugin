@@ -9,8 +9,6 @@ export default class TemplatePlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new SettingTab(this.app, this));
-
-
 	}
 
 	onunload() {

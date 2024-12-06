@@ -3,10 +3,12 @@ export function debounce(
     wait
 ) {
     let timeout = null;
+
     return function (...args) {
         if (timeout !== null) {
             clearTimeout(timeout);
         }
+        
         timeout = window.setTimeout(() => {
             func.apply(this, args);
             timeout = null;
